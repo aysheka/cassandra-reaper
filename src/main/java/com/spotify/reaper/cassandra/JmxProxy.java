@@ -27,6 +27,7 @@ import org.apache.cassandra.db.compaction.CompactionManagerMBean;
 import org.apache.cassandra.repair.RepairParallelism;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.service.StorageServiceMBean;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +62,8 @@ public class JmxProxy implements NotificationListener, AutoCloseable {
 
   private static final Logger LOG = LoggerFactory.getLogger(JmxProxy.class);
 
-  private static final int JMX_PORT = 7199;
+  private static final int JMX_PORT ;
+
   private static final String JMX_URL = "service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi";
   private static final String SS_OBJECT_NAME = "org.apache.cassandra.db:type=StorageService";
   private static final String AES_OBJECT_NAME =
@@ -76,6 +78,12 @@ public class JmxProxy implements NotificationListener, AutoCloseable {
   private final String host;
   private final JMXServiceURL jmxUrl;
   private final String clusterName;
+
+  static {
+    String jxmPort = System.getProperty("jxm.port", "7199");
+
+    JMX_PORT = Integer.valueOf(jxmPort);
+  }
 
   private JmxProxy(Optional<RepairStatusHandler> handler, String host, JMXServiceURL jmxUrl,
       JMXConnector jmxConnector, StorageServiceMBean ssProxy, ObjectName ssMbeanName,
@@ -349,7 +357,7 @@ public class JmxProxy implements NotificationListener, AutoCloseable {
     if (repairParallelism.equals(RepairParallelism.DATACENTER_AWARE)) {
       if (canUseDatacenterAware) {
         return ssProxy.forceRepairRangeAsync(beginToken.toString(), endToken.toString(), keyspace,
-            repairParallelism.ordinal(), null, null,
+            repairParallelism.ordinal(), null, null, true,
             columnFamilies
                 .toArray(new String[columnFamilies.size()]));
       } else {
@@ -361,7 +369,7 @@ public class JmxProxy implements NotificationListener, AutoCloseable {
     }
     boolean snapshotRepair = repairParallelism.equals(RepairParallelism.SEQUENTIAL);
     return ssProxy.forceRepairRangeAsync(beginToken.toString(), endToken.toString(), keyspace,
-        snapshotRepair, false,
+        snapshotRepair, false,true,
         columnFamilies.toArray(new String[columnFamilies.size()]));
   }
 
